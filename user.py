@@ -15,18 +15,21 @@ bot = telegram.Bot(token=TOKEN)
 
 def start(update, context):
     print('进入start函数')
-    keyboard = [
-        [InlineKeyboardButton("购买商品", callback_data=str('购买商品')),
-         InlineKeyboardButton("查询订单", callback_data=str('查询订单'))],
-        [InlineKeyboardButton("更换支付方式", callback_data=str('更换支付方式')),
-         InlineKeyboardButton("取消订单", callback_data=str('取消订单'))]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    update.message.reply_text(
-        '选择您的操作：',
-        reply_markup=reply_markup
-    )
-    return ROUTE
+    if update.effective_user.username:
+        keyboard = [
+            [InlineKeyboardButton("购买商品", callback_data=str('购买商品')),
+             InlineKeyboardButton("查询订单", callback_data=str('查询订单'))],
+            [InlineKeyboardButton("更换支付方式", callback_data=str('更换支付方式')),
+             InlineKeyboardButton("取消订单", callback_data=str('取消订单'))]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        update.message.reply_text(
+            '选择您的操作：',
+            reply_markup=reply_markup
+        )
+        return ROUTE
+    else:
+        update.message.reply_text('请先设置TG用户名后再购买卡密')
 
 
 def category_filter(update, context):

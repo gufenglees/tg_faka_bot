@@ -1,25 +1,30 @@
 import telegram
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton, ForceReply
 from telegram.ext import CommandHandler, MessageHandler, Filters, ConversationHandler, CallbackQueryHandler
-from config import TOKEN, ADMIN_ID, ADMIN_COMMAND_START, ADMIN_COMMAND_QUIT
+from config import TOKEN, ADMIN_ID, ADMIN_COMMAND_START, ADMIN_COMMAND_QUIT, VERSION
 import sqlite3
 import time
 import os
+import importlib
+import requests
 
-ADMIN_ROUTE, ADMIN_CATEGORY_ROUTE, CATEGORY_FUNC_EXEC, ADMIN_GOODS_ROUTE, ADMIN_GOODS_STEP1, ADMIN_GOODS_STEP2, \
-ADMIN_CARD_ROUTE, ADMIN_TRADE_ROUTE, ADMIN_CARD_STEP1, ADMIN_CARD_STEP2, ADMIN_TRADE_EXEC = range(11)
+ADMIN_ROUTE, ADMIN_CATEGORY_ROUTE, CATEGORY_FUNC_EXEC, ADMIN_GOODS_ROUTE, \
+ADMIN_GOODS_STEP1, ADMIN_GOODS_STEP2, ADMIN_CARD_ROUTE, ADMIN_TRADE_ROUTE, \
+ADMIN_CARD_STEP1, ADMIN_CARD_STEP2, ADMIN_TRADE_EXEC, ADMIN_MARKETING_ROUTE,\
+ADMIN_MARKETING_EXEC = range(13)
 bot = telegram.Bot(token=TOKEN)
 
 
 def admin(update, context):
     if is_admin(update, context):
         keyboard = [
-            [
-                InlineKeyboardButton("分类", callback_data=str('分类')),
-                InlineKeyboardButton("商品", callback_data=str('商品')),
-                InlineKeyboardButton("卡密", callback_data=str('卡密')),
-                InlineKeyboardButton("订单", callback_data=str('订单'))
-            ]
+            [InlineKeyboardButton("分类", callback_data=str('分类')),
+             InlineKeyboardButton("商品", callback_data=str('商品'))],
+            [InlineKeyboardButton("卡密", callback_data=str('卡密')),
+             InlineKeyboardButton("订单", callback_data=str('订单'))],
+            [InlineKeyboardButton("营销", callback_data=str('营销')),
+             InlineKeyboardButton("更新", callback_data=str('更新'))]
+
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         update.message.reply_text(
@@ -87,10 +92,10 @@ def admin_entry_route(update, context):
         return ADMIN_CARD_ROUTE
     elif update.callback_query.data == '订单':
         keyboard = [
-            [
-                InlineKeyboardButton("查询订单", callback_data=str('查询订单')),
-                InlineKeyboardButton("重新激活订单", callback_data=str('重新激活订单')),
-            ]
+            [InlineKeyboardButton("查询订单", callback_data=str('查询订单')),
+             InlineKeyboardButton("重新激活订单", callback_data=str('重新激活订单'))],
+            [InlineKeyboardButton("取消所有未支付订单", callback_data=str('取消所有未支付订单')),
+             InlineKeyboardButton("删除所有非未支付订单", callback_data=str('删除所有非未支付订单'))],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         query.edit_message_text(
@@ -98,6 +103,57 @@ def admin_entry_route(update, context):
             reply_markup=reply_markup
         )
         return ADMIN_TRADE_ROUTE
+    elif update.callback_query.data == '营销':
+        keyboard = [
+            [InlineKeyboardButton("群发消息", callback_data=str('群发消息'))]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        query.edit_message_text(
+            text="选择营销功能：",
+            reply_markup=reply_markup
+        )
+        return ADMIN_MARKETING_ROUTE
+    elif update.callback_query.data == '更新':
+        try:
+            newest_version = requests.get('https://raw.githubusercontent.com/lulafun/tg_faka_bot/master/update/version', timeout=3).text
+        except Exception as e:
+            print(e)
+            print('最新版本获取失败，请检测服务器与GitHub的连通性！')
+            query.edit_message_text(text='最新版本获取失败，请检测服务器与GitHub的连通性！')
+            return ConversationHandler.END
+        try:
+            if int(newest_version.split('.')[0]) > int(VERSION.split('.')[0]):
+                print('检测到最新版本！\n您当前的版本为：{}\n最新的版本为：{}'.format(VERSION, newest_version))
+                query.edit_message_text(
+                    text='检测到最新版本！\n\n您当前的版本为：{}\n最新的版本为：{}\n查看更新日志：@tgfaka_bb\n前往项目地址：{}'.format(
+                        VERSION, newest_version, 'https://github.com/lulafun/tg_faka_bot'),
+                    disable_web_page_preview=True
+                )
+                return ConversationHandler.END
+            elif int(newest_version.split('.')[0]) == int(VERSION.split('.')[0]):
+                if int(newest_version.split('.')[1]) > int(VERSION.split('.')[1]):
+                    print('检测到最新版本！\n您当前的版本为：{}\n最新的版本为：{}'.format(VERSION, newest_version))
+                    query.edit_message_text(
+                        text='检测到最新版本！\n\n您当前的版本为：{}\n最新的版本为：{}\n查看更新日志：@tgfaka_bb\n前往项目地址：{}'.format(
+                            VERSION, newest_version, 'https://github.com/lulafun/tg_faka_bot'),
+                        disable_web_page_preview=True
+                    )
+                    return ConversationHandler.END
+                elif int(newest_version.split('.')[1]) == int(VERSION.split('.')[1]):
+                    if int(newest_version.split('.')[2]) > int(VERSION.split('.')[2]):
+                        print('检测到最新版本！\n您当前的版本为：{}\n最新的版本为：{}'.format(VERSION, newest_version))
+                        query.edit_message_text(
+                            text='检测到最新版本！\n\n您当前的版本为：{}\n最新的版本为：{}\n查看更新日志：@tgfaka_bb\n前往项目地址：{}'.format(
+                                VERSION, newest_version, 'https://github.com/lulafun/tg_faka_bot'),
+                            disable_web_page_preview=True
+                        )
+                        return ConversationHandler.END
+                    elif int(newest_version.split('.')[2]) == int(VERSION.split('.')[2]):
+                        print('目前已是最新版本，如有BUG，欢迎加群 @tgfaka 积极反馈！')
+                        query.edit_message_text(text='目前已是最新版本，如有BUG，欢迎加群 @tgfaka 积极反馈！')
+                        return ConversationHandler.END
+        except Exception as e:
+            print(e)
 
 
 def category_func_route(update, context):
@@ -686,6 +742,31 @@ def trade_func_route(update, context):
         context.user_data['func'] = '重新激活订单'
         query.edit_message_text(text="请回复您需要重新激活的订单号：")
         return ADMIN_TRADE_EXEC
+    elif update.callback_query.data == '取消所有未支付订单':
+        context.user_data['func'] = '取消所有未支付订单'
+        keyboard = [[InlineKeyboardButton("我已知晓风险，确认取消未支付订单！", callback_data=str('确认取消'))]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        query.edit_message_text(
+            text='此操作将会取消*所有当前未支付的订单*，并释放"交易中"的库存\n\n'
+                 '系统执行该操作后，将会对所有取消订单的用户发送不再支付通知\n\n'
+                 '如果用户后续*支付完成*，将*无法*成功发货，*请谨慎操作！*\ndi',
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+        return ADMIN_TRADE_EXEC
+    elif update.callback_query.data == '删除所有非未支付订单':
+        context.user_data['func'] = '删除所有非未支付订单'
+        keyboard = [[InlineKeyboardButton("我已知晓风险，确认删除！", callback_data=str('确认删除'))]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        query.edit_message_text(
+            text="此操作将会删除*所有过期未支付或已经交易完成的订单*\n\n"
+                 "如果执行此操作，用户（包括您）将*无法*通过订单号查询到*订单记录*，*请谨慎操作！*\n\n"
+                 "此外，营销功能的目标用户依赖于此数据表中的部分字段，如果您在此处删除了订单，营销功能将会无法使用\n\n"
+                 "如非考虑到数据泄漏的安全性，不建议执行此操作。经过测试，10万数据中精准检索一条数据的时间极短，不影响性能以及用户体验！\n",
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+        return ADMIN_TRADE_EXEC
 
 
 def itimeout(update, context):
@@ -754,6 +835,254 @@ def admin_trade_func_exec(update, context):
         print(e)
 
 
+def trade_func_sql_clean(update, context):
+    try:
+        query = update.callback_query
+        query.answer()
+        if update.callback_query.data == '确认取消':
+            conn = sqlite3.connect('faka.sqlite3')
+            cursor = conn.cursor()
+            cursor.execute("select * from trade where status=?", ('unpaid',))
+            trades_list = cursor.fetchall()
+            if len(trades_list) == 0:
+                query.edit_message_text(text='目前暂时没有尚未支付的订单！/{}'.format(ADMIN_COMMAND_START))
+            else:
+                for i in trades_list:
+                    trade_id, goods_name, desc, buyer_id, payment_method, card_id = \
+                        i[0], i[2], i[3], i[7], i[11], i[5]
+                    try:
+                        payment_api = importlib.import_module("getways." + payment_method + "." + payment_method)
+                        payment_api.cancel(trade_id)
+                    except Exception as e:
+                        print(e)
+                        print('管理员取消订单，但是支付网关响应失败')
+                    cursor.execute("update trade set status=? where trade_id=?", ('locking', trade_id,))
+                    cursor.execute("update cards set status=? where id=?", ('active', card_id,))
+                    try:
+                        bot.send_message(
+                            chat_id=buyer_id,
+                            text='您的订单已被管理员关闭，请勿支付！\n'
+                                 '订单号: `{}`\n'
+                                 '商品名：*{}*\n'
+                                 '介绍：*{}*'.format(trade_id, goods_name, desc),
+                            parse_mode='Markdown'
+                        )
+                    except:
+                        print("用户：" + str(buyer_id) + "信息发送失败，可能该用户已经停用机器人！")
+                conn.commit()
+                conn.close()
+                query.edit_message_text(text='成功取消{}个未支付订单！ /{}'.format(len(trades_list), ADMIN_COMMAND_START))
+                return ConversationHandler.END
+        elif update.callback_query.data == '确认删除':
+            conn = sqlite3.connect('faka.sqlite3')
+            cursor = conn.cursor()
+            cursor.execute("delete from trade where status!=?", ('unpaid',))
+            conn.commit()
+            conn.close()
+            query.edit_message_text(text='已经成功删除！ /{}'.format(ADMIN_COMMAND_START))
+            return ConversationHandler.END
+    except Exception as e:
+        print(e)
+
+
+def marketing_route(update, context):
+    try:
+        print('进入 marketing_route 函数')
+        query = update.callback_query
+        query.answer()
+        if update.callback_query.data == '群发消息':
+            context.user_data['func'] = '群发消息'
+            keyboard = [
+                [InlineKeyboardButton("已下单并支付用户", callback_data=str('已下单并支付用户')),
+                 InlineKeyboardButton("已下单未支付用户", callback_data=str('已下单未支付用户'))],
+                [InlineKeyboardButton("所有已下单用户", callback_data=str('所有已下单用户'))]
+            ]
+            query.edit_message_text(
+                text="请选择需要群发消息的目标群体：",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+            return ADMIN_MARKETING_EXEC
+    except Exception as e:
+        print(e)
+
+
+def marketing_func_exec(update, context):
+    try:
+        print('进入 marketing_func_exec 函数')
+        query = update.callback_query
+        query.answer()
+        func = context.user_data['func']
+        if func == '群发消息':
+            choose_target = update.callback_query.data
+            if choose_target == '已下单并支付用户':
+                context.user_data['choose_target'] = choose_target
+                query.edit_message_text(
+                    text="请回复需要发送的内容，支持Markdown格式\n"
+                         "详情请参考官方文档：[点击访问](https://core.telegram.org/bots/api#formatting-options)",
+                    parse_mode='Markdown',
+                    disable_web_page_preview=True
+                )
+                return ADMIN_MARKETING_EXEC
+            elif choose_target == '已下单未支付用户':
+                context.user_data['choose_target'] = choose_target
+                query.edit_message_text(
+                    text="请回复需要发送的内容，支持Markdown格式\n"
+                         "详情请参考官方文档：[点击访问](https://core.telegram.org/bots/api#formatting-options)",
+                    parse_mode='Markdown',
+                    disable_web_page_preview=True
+                )
+                return ADMIN_MARKETING_EXEC
+            elif choose_target == '所有已下单用户':
+                context.user_data['choose_target'] = choose_target
+                query.edit_message_text(
+                    text="请回复需要发送的内容，支持Markdown格式\n"
+                         "详情请参考官方文档：[点击访问](https://core.telegram.org/bots/api#formatting-options)",
+                    parse_mode='Markdown',
+                    disable_web_page_preview=True
+                )
+                return ADMIN_MARKETING_EXEC
+    except Exception as e:
+        print(e)
+
+
+def marketing_func_send_message_getinput(update, context):
+    try:
+        user_id = update.effective_user.id
+        func = context.user_data['func']
+        choose_target = context.user_data['choose_target']
+        message_content = update.message.text
+        context.user_data['message_content'] = message_content
+        # print(func, choose_target, message_content)
+        keyboard = [
+            [InlineKeyboardButton("确认发送", callback_data=str('确认发送'))],
+        ]
+        bot.send_message(
+            chat_id=user_id,
+            text="用户将收到以下消息：\n\n" + message_content,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='Markdown'
+        )
+        return ADMIN_MARKETING_EXEC
+    except Exception as e:
+        print(e)
+
+
+def marketing_func_send_message_comfirm(update, context):
+    try:
+        query = update.callback_query
+        query.answer()
+        user_id = update.effective_user.id
+        func = context.user_data['func']
+        choose_target = context.user_data['choose_target']
+        message_content = context.user_data['message_content']
+        # print(func, choose_target, message_content)
+        if choose_target == '已下单并支付用户':
+            conn = sqlite3.connect('faka.sqlite3')
+            cursor = conn.cursor()
+            cursor.execute("select user_id from trade where status=?", ('paid',))
+            user_list = cursor.fetchall()
+            conn.commit()
+            conn.close()
+            # print(user_list)
+            if len(user_list) == 0:
+                bot.send_message(
+                    chat_id=user_id,
+                    text="无已下单并支付用户"
+                )
+            else:
+                filtered_user_list = []
+                for i in user_list:
+                    user_id = i[0]
+                    if user_id not in filtered_user_list:
+                        filtered_user_list.append(user_id)
+                # print(filtered_user_list)
+                for j in filtered_user_list:
+                    try:
+                        bot.send_message(
+                            chat_id=j,
+                            text=message_content,
+                            parse_mode='Markdown',
+                        )
+                    except Exception as e:
+                        print(e)
+                        print('信息发送失败，可能该用户已经停用bot')
+                bot.send_message(
+                    chat_id=user_id,
+                    text="消息群发成功\n"
+                )
+        elif choose_target == '已下单未支付用户':
+            conn = sqlite3.connect('faka.sqlite3')
+            cursor = conn.cursor()
+            cursor.execute("select user_id from trade where status=?", ('unpaid',))
+            user_list = cursor.fetchall()
+            conn.commit()
+            conn.close()
+            # print(user_list)
+            if len(user_list) == 0:
+                bot.send_message(
+                    chat_id=user_id,
+                    text="无已下单未支付用户"
+                )
+            else:
+                filtered_user_list = []
+                for i in user_list:
+                    user_id = i[0]
+                    if user_id not in filtered_user_list:
+                        filtered_user_list.append(user_id)
+                # print(filtered_user_list)
+                for j in filtered_user_list:
+                    try:
+                        bot.send_message(
+                            chat_id=j,
+                            text=message_content,
+                            parse_mode='Markdown',
+                        )
+                    except Exception as e:
+                        print(e)
+                        print('信息发送失败，可能该用户已经停用bot')
+                bot.send_message(
+                    chat_id=user_id,
+                    text="消息群发成功\n"
+                )
+        elif choose_target == '所有已下单用户':
+            conn = sqlite3.connect('faka.sqlite3')
+            cursor = conn.cursor()
+            cursor.execute("select user_id from trade")
+            user_list = cursor.fetchall()
+            conn.commit()
+            conn.close()
+            # print(user_list)
+            if len(user_list) == 0:
+                bot.send_message(
+                    chat_id=user_id,
+                    text="无已下单未支付用户"
+                )
+            else:
+                filtered_user_list = []
+                for i in user_list:
+                    user_id = i[0]
+                    if user_id not in filtered_user_list:
+                        filtered_user_list.append(user_id)
+                # print(filtered_user_list)
+                for j in filtered_user_list:
+                    try:
+                        bot.send_message(
+                            chat_id=j,
+                            text=message_content,
+                            parse_mode='Markdown',
+                        )
+                    except Exception as e:
+                        print(e)
+                        print('信息发送失败，可能该用户已经停用bot')
+                bot.send_message(
+                    chat_id=user_id,
+                    text="消息群发成功\n"
+                )
+        return ConversationHandler.END
+    except Exception as e:
+        print(e)
+
+
 def is_admin(update, context):
     if update.message.from_user.id in ADMIN_ID:
         return True
@@ -772,68 +1101,79 @@ def icancel(update, context):
 
 
 admin_handler = ConversationHandler(
-        entry_points=[CommandHandler(ADMIN_COMMAND_START, admin)],
+    entry_points=[CommandHandler(ADMIN_COMMAND_START, admin)],
 
-        states={
-            ADMIN_ROUTE: [
-                CommandHandler(ADMIN_COMMAND_START, admin),
-                CallbackQueryHandler(admin_entry_route, pattern='^' + str('分类') + '$'),
-                CallbackQueryHandler(admin_entry_route, pattern='^' + str('商品') + '$'),
-                CallbackQueryHandler(admin_entry_route, pattern='^' + str('卡密') + '$'),
-                CallbackQueryHandler(admin_entry_route, pattern='^' + str('订单') + '$'),
-            ],
-            ADMIN_CATEGORY_ROUTE: [
-                CommandHandler(ADMIN_COMMAND_START, admin),
-                CallbackQueryHandler(category_func_route, pattern='^' + '(添加|删除)分类' + '$'),
-            ],
-            CATEGORY_FUNC_EXEC: [
-                CommandHandler(ADMIN_COMMAND_START, admin),
-                CommandHandler(ADMIN_COMMAND_QUIT, icancel),
-                MessageHandler(Filters.text, category_func_exec),
-                CallbackQueryHandler(category_func_exec, pattern='.*?')
-            ],
-            ADMIN_GOODS_ROUTE: [
-                CommandHandler(ADMIN_COMMAND_START, admin),
-                CallbackQueryHandler(goods_func_route, pattern='^' + '(添加商品|删除商品|上/下架|更改价格|更改描述|更改使用方法|更改展示优先级)' + '$'),
-            ],
-            ADMIN_GOODS_STEP1: [
-                CommandHandler(ADMIN_COMMAND_START, admin),
-                CallbackQueryHandler(goods_func_step1, pattern='.*?')
-            ],
-            ADMIN_GOODS_STEP2: [
-                CommandHandler(ADMIN_COMMAND_START, admin),
-                CommandHandler(ADMIN_COMMAND_QUIT, icancel),
-                MessageHandler(Filters.text, goods_func_exec),
-                CallbackQueryHandler(goods_func_set_status, pattern='^' + '(上架|下架)' + '$'),
-                CallbackQueryHandler(goods_func_step2, pattern='.*?')
-            ],
-            ADMIN_CARD_ROUTE: [
-                CommandHandler(ADMIN_COMMAND_START, admin),
-                CallbackQueryHandler(card_func_route, pattern='^' + '(添加卡密|删除卡密|导出卡密)' + '$'),
-            ],
-            ADMIN_CARD_STEP1: [
-                CommandHandler(ADMIN_COMMAND_START, admin),
-                CommandHandler(ADMIN_COMMAND_QUIT, icancel),
-                CallbackQueryHandler(card_func_step1, pattern='.*?')
-            ],
-            ADMIN_CARD_STEP2: [
-                CommandHandler(ADMIN_COMMAND_START, admin),
-                CommandHandler(ADMIN_COMMAND_QUIT, icancel),
-                MessageHandler(Filters.document, card_add_exec),
-                CallbackQueryHandler(card_func_step2, pattern='.*?')
-            ],
-            ADMIN_TRADE_ROUTE: [
-                CommandHandler(ADMIN_COMMAND_START, admin),
-                CallbackQueryHandler(trade_func_route, pattern='^' + '(查询订单|重新激活订单)' + '$'),
-            ],
-            ADMIN_TRADE_EXEC: [
-                CommandHandler(ADMIN_COMMAND_START, admin),
-                MessageHandler(Filters.text, admin_trade_func_exec)
-            ],
-            ConversationHandler.TIMEOUT: [MessageHandler(Filters.all, itimeout)],
-        },
-        conversation_timeout=300,
-        fallbacks=[CommandHandler(ADMIN_COMMAND_QUIT, icancel)]
-    )
-
-
+    states={
+        ADMIN_ROUTE: [
+            CommandHandler(ADMIN_COMMAND_START, admin),
+            CallbackQueryHandler(admin_entry_route, pattern='^' + str('分类') + '$'),
+            CallbackQueryHandler(admin_entry_route, pattern='^' + str('商品') + '$'),
+            CallbackQueryHandler(admin_entry_route, pattern='^' + str('卡密') + '$'),
+            CallbackQueryHandler(admin_entry_route, pattern='^' + str('订单') + '$'),
+            CallbackQueryHandler(admin_entry_route, pattern='^' + str('营销') + '$'),
+            CallbackQueryHandler(admin_entry_route, pattern='^' + str('更新') + '$'),
+        ],
+        ADMIN_CATEGORY_ROUTE: [
+            CommandHandler(ADMIN_COMMAND_START, admin),
+            CallbackQueryHandler(category_func_route, pattern='^' + '(添加|删除)分类' + '$'),
+        ],
+        CATEGORY_FUNC_EXEC: [
+            CommandHandler(ADMIN_COMMAND_START, admin),
+            CommandHandler(ADMIN_COMMAND_QUIT, icancel),
+            MessageHandler(Filters.text, category_func_exec),
+            CallbackQueryHandler(category_func_exec, pattern='.*?')
+        ],
+        ADMIN_GOODS_ROUTE: [
+            CommandHandler(ADMIN_COMMAND_START, admin),
+            CallbackQueryHandler(goods_func_route, pattern='^' + '(添加商品|删除商品|上/下架|更改价格|更改描述|更改使用方法|更改展示优先级)' + '$'),
+        ],
+        ADMIN_GOODS_STEP1: [
+            CommandHandler(ADMIN_COMMAND_START, admin),
+            CallbackQueryHandler(goods_func_step1, pattern='.*?')
+        ],
+        ADMIN_GOODS_STEP2: [
+            CommandHandler(ADMIN_COMMAND_START, admin),
+            CommandHandler(ADMIN_COMMAND_QUIT, icancel),
+            MessageHandler(Filters.text, goods_func_exec),
+            CallbackQueryHandler(goods_func_set_status, pattern='^' + '(上架|下架)' + '$'),
+            CallbackQueryHandler(goods_func_step2, pattern='.*?')
+        ],
+        ADMIN_CARD_ROUTE: [
+            CommandHandler(ADMIN_COMMAND_START, admin),
+            CallbackQueryHandler(card_func_route, pattern='^' + '(添加卡密|删除卡密|导出卡密)' + '$'),
+        ],
+        ADMIN_CARD_STEP1: [
+            CommandHandler(ADMIN_COMMAND_START, admin),
+            CommandHandler(ADMIN_COMMAND_QUIT, icancel),
+            CallbackQueryHandler(card_func_step1, pattern='.*?')
+        ],
+        ADMIN_CARD_STEP2: [
+            CommandHandler(ADMIN_COMMAND_START, admin),
+            CommandHandler(ADMIN_COMMAND_QUIT, icancel),
+            MessageHandler(Filters.document, card_add_exec),
+            CallbackQueryHandler(card_func_step2, pattern='.*?')
+        ],
+        ADMIN_TRADE_ROUTE: [
+            CommandHandler(ADMIN_COMMAND_START, admin),
+            CallbackQueryHandler(trade_func_route, pattern='^' + '(查询订单|重新激活订单|取消所有未支付订单|删除所有非未支付订单)' + '$'),
+        ],
+        ADMIN_TRADE_EXEC: [
+            CommandHandler(ADMIN_COMMAND_START, admin),
+            MessageHandler(Filters.text, admin_trade_func_exec),
+            CallbackQueryHandler(trade_func_sql_clean, pattern='^' + '(确认取消|确认删除)' + '$'),
+        ],
+        ADMIN_MARKETING_ROUTE: [
+            CommandHandler(ADMIN_COMMAND_START, admin),
+            CallbackQueryHandler(marketing_route, pattern='^' + '(群发消息)' + '$'),
+        ],
+        ADMIN_MARKETING_EXEC: [
+            CommandHandler(ADMIN_COMMAND_START, admin),
+            CallbackQueryHandler(marketing_func_exec, pattern='^' + '(已下单并支付用户|已下单未支付用户|所有已下单用户)' + '$'),
+            CallbackQueryHandler(marketing_func_send_message_comfirm, pattern='^' + '(确认发送)' + '$'),
+            MessageHandler(Filters.text, marketing_func_send_message_getinput),
+        ],
+        ConversationHandler.TIMEOUT: [MessageHandler(Filters.all, itimeout)],
+    },
+    conversation_timeout=300,
+    fallbacks=[CommandHandler(ADMIN_COMMAND_QUIT, icancel)]
+)
