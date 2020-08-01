@@ -1,7 +1,7 @@
 import sqlite3
 
 try:
-    conn = sqlite3.connect('../faka.sqlite3')
+    conn = sqlite3.connect('faka.sqlite3')
     cursor = conn.cursor()
     cursor.execute("ALTER TABLE trade ADD COLUMN out_trade_no text")
     conn.commit()
