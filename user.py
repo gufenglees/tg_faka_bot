@@ -7,6 +7,7 @@ import time
 import datetime
 import random
 import importlib
+import copy
 
 
 ROUTE, CATEGORY, PRICE, SUBMIT, TRADE, CHOOSE_PAYMENT_METHOD = range(6)
@@ -87,51 +88,58 @@ def goods_filter(update, context):
 
 
 def user_price_filter(update, context):
-    query = update.callback_query
-    query.answer()
-    goods_name = update.callback_query.data
-    category_name = context.user_data['category_name']
-    conn = sqlite3.connect('faka.sqlite3')
-    cursor = conn.cursor()
-    cursor.execute("select * from goods where category_name=? and name=?", (category_name, goods_name,))
-    goods = cursor.fetchone()
-    goods_id = goods[0]
-    cursor.execute("select * from cards where goods_id=? and status=?", (goods_id, 'active'))
-    active_cards = cursor.fetchall()
-    cursor.execute("select * from cards where goods_id=? and status=?", (goods_id, 'locking'))
-    locking_cards = cursor.fetchall()
-    conn.close()
-    if len(active_cards) == 0 and len(locking_cards) != 0:
-        query.edit_message_text(
-            text="该商品暂时*无库存*\n"
-                 "现在有人*正在交易*，如果超时未支付，该订单将会被释放，届时即可购买\n"
-                 "会话已结束，使用 /start 重新发起会话",
-            parse_mode='Markdown'
-        )
-        return ConversationHandler.END
-    elif len(active_cards) == 0 and len(locking_cards) == 0:
-        query.edit_message_text(text="该商品暂时*无库存*，等待补货\n"
-                                     "会话已结束，使用 /start 重新发起会话",
-                                parse_mode='Markdown', )
-        return ConversationHandler.END
-    elif len(active_cards) > 0:
-        price = goods[3]
-        descrip = goods[5]
-        context.user_data['descrip'] = descrip
-        context.user_data['goods_id'] = goods_id
-        context.user_data['goods_name'] = goods_name
-        context.user_data['price'] = price
-        keyboard = []
-        for i in PAYMENT_METHOD:
-            payment_method_list = [InlineKeyboardButton(PAYMENT_METHOD[i], callback_data=str(i))]
-            keyboard.append(payment_method_list)
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        query.edit_message_text(
-            text="请选择您的支付方式：",
-            parse_mode='Markdown',
-            reply_markup=reply_markup
-        )
-        return CHOOSE_PAYMENT_METHOD
+    try:
+        query = update.callback_query
+        query.answer()
+        goods_name = update.callback_query.data
+        category_name = context.user_data['category_name']
+        conn = sqlite3.connect('faka.sqlite3')
+        cursor = conn.cursor()
+        cursor.execute("select * from goods where category_name=? and name=?", (category_name, goods_name,))
+        goods = cursor.fetchone()
+        goods_id = goods[0]
+        cursor.execute("select * from cards where goods_id=? and status=?", (goods_id, 'active'))
+        active_cards = cursor.fetchall()
+        cursor.execute("select * from cards where goods_id=? and status=?", (goods_id, 'locking'))
+        locking_cards = cursor.fetchall()
+        conn.close()
+        if len(active_cards) == 0 and len(locking_cards) != 0:
+            query.edit_message_text(
+                text="该商品暂时*无库存*\n"
+                    "现在有人*正在交易*，如果超时未支付，该订单将会被释放，届时即可购买\n"
+                    "会话已结束，使用 /start 重新发起会话",
+                parse_mode='Markdown'
+            )
+            return ConversationHandler.END
+        elif len(active_cards) == 0 and len(locking_cards) == 0:
+            query.edit_message_text(text="该商品暂时*无库存*，等待补货\n"
+                                        "会话已结束，使用 /start 重新发起会话",
+                                    parse_mode='Markdown', )
+            return ConversationHandler.END
+        elif len(active_cards) > 0:
+            try:
+                price = goods[3]
+                descrip = goods[5]
+                context.user_data['descrip'] = descrip
+                context.user_data['goods_id'] = goods_id
+                context.user_data['goods_name'] = goods_name
+                context.user_data['price'] = price
+                keyboard = []
+                temp_payment_method = copy.deepcopy(PAYMENT_METHOD)
+                for i in temp_payment_method:
+                    payment_method_list = [InlineKeyboardButton(temp_payment_method[i], callback_data=str(i))]
+                    keyboard.append(payment_method_list)
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                query.edit_message_text(
+                    text="请选择您的支付方式：",
+                    parse_mode='Markdown',
+                    reply_markup=reply_markup
+                )
+                return CHOOSE_PAYMENT_METHOD
+            except Exception as e:
+                print(e)
+    except Exception as e:
+        print(e)
 
 
 def choose_payment_method(update, context):
@@ -244,7 +252,7 @@ def submit_trade(update, context):
                 )
                 return ConversationHandler.END
         else:
-            query.edit_message_text('您存在未支付订单，请支付或等待订单过期后重试！')
+            query.edit_message_text('您存在未支付订单，请支付或取消订单过期后再次下单！')
             return ConversationHandler.END
     except ModuleNotFoundError:
         print('支付方式不存在，请检查文件名与配置是否一致')
@@ -295,8 +303,8 @@ def trade_filter(update, context):
                 )
                 return ROUTE
             else:
-                PAYMENT_METHOD.pop(trade_info[11])
-                print(PAYMENT_METHOD)
+                temp_payment_method = copy.deepcopy(PAYMENT_METHOD)
+                temp_payment_method.pop(trade_info[11])
                 context.user_data['goods_id'] = trade_info[1]
                 context.user_data['goods_name'] = trade_info[2]
                 context.user_data['trade_id'] = trade_info[0]
@@ -306,16 +314,21 @@ def trade_filter(update, context):
                 conn.close()
                 context.user_data['goods_price'] = str(goods_info[3])
                 keyboard = []
-                for i in PAYMENT_METHOD:
-                    payment_method_list = [InlineKeyboardButton(PAYMENT_METHOD[i], callback_data=str(i))]
-                    keyboard.append(payment_method_list)
-                reply_markup = InlineKeyboardMarkup(keyboard)
-                query.edit_message_text(
-                    text="请选择另外的支付方式：",
-                    parse_mode='Markdown',
-                    reply_markup=reply_markup
-                )
-                return TRADE
+                if len(temp_payment_method) == 0:
+                    query.edit_message_text(
+                    text="暂时没有其他支付方式")
+                    return ConversationHandler.END
+                else:
+                    for i in temp_payment_method:
+                        payment_method_list = [InlineKeyboardButton(temp_payment_method[i], callback_data=str(i))]
+                        keyboard.append(payment_method_list)
+                    reply_markup = InlineKeyboardMarkup(keyboard)
+                    query.edit_message_text(
+                        text="请选择另外的支付方式：",
+                        parse_mode='Markdown',
+                        reply_markup=reply_markup
+                    )
+                    return TRADE
         elif query.data == '取消订单':
             context.user_data['func'] = '取消订单'
             conn = sqlite3.connect('faka.sqlite3')
