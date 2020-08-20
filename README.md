@@ -4,19 +4,14 @@ Telegram 交流反馈群组：@tgfaka  [点击加入](https://t.me/tgfaka)
 
 ## 使用方法
 ### 第一次安装
-#### 安装依赖
-`pip3 install -r requirements.txt` 
-#### 修改文件前缀
-修改以`example.xxx.xxx`开头的文件，重命名为`xxx.xxx`。
-例如`example.config.py`，重命名为`config.py`
+#### 安装使用教程（含视频）
+[查看教程](https://github.com/lulafun/tg_faka_bot/wiki/%E5%AE%89%E8%A3%85%E4%BD%BF%E7%94%A8%E6%95%99%E7%A8%8B)
 
-需要重命名的文件为：`example.config.py`、`example.faka.sqlite3`、支付网关目录下的接口文件都需要重命名
-#### 启动方法
-`python3 main.py`
-### 升级版本
+### 如何升级版本
 [查看说明](https://github.com/lulafun/tg_faka_bot/wiki/%E7%89%88%E6%9C%AC%E5%8D%87%E7%BA%A7%E6%96%B9%E6%B3%95)
 
 ## 功能介绍
+
 ### 管理员界面
 ![](https://s3.jpg.cm/2020/08/01/bXuoT.png)
 ![](https://s3.jpg.cm/2020/06/29/cw0LC.jpg)
@@ -43,27 +38,7 @@ Telegram 交流反馈群组：@tgfaka  [点击加入](https://t.me/tgfaka)
 
 #### 配置自己的支付接口
 
-编辑`config.py`文件
-现在存在的支付接口：
-```
-PAYMENT_METHOD = {
-    'epay': '支付宝/微信/QQ',
-    'alifacepay': '支付宝当面付'
-}
-```
-
-如果这时候有一个新的文件名为`mugglepay.py`的支付接口，那么可以这么配置：
-```
-PAYMENT_METHOD = {
-    'epay': '支付宝/微信/QQ',
-    'alifacepay': '支付宝当面付',
-    'mugglepay': '加密货币'
-}
-```
-
-`mugglepay.py`的相对路径为`getways/mugglepay/mugglepay.py`，请确保你安装了此插件需要的额外依赖
-
-各个支付接口的配置已经整合到支付接口文件中，不再在`config.py`里面配置
+[查看说明](https://github.com/lulafun/tg_faka_bot/wiki/%E5%AE%89%E8%A3%85%E4%BD%BF%E7%94%A8%E6%95%99%E7%A8%8B#%E7%BB%A7%E7%BB%AD%E9%85%8D%E7%BD%AE%E6%94%AF%E4%BB%98%E6%8E%A5%E5%8F%A3%E4%BF%A1%E6%81%AF)
 
 
 #### 编写自己的支付接口
