@@ -78,13 +78,17 @@ def query(out_trade_no):
     try:
         result = alipay.api_alipay_trade_query(out_trade_no=out_trade_no)
         if result.get("trade_status", "") == "TRADE_SUCCESS":
-            print('用户支付成功')
+            print(str(result))
+            print('支付宝当面付｜用户支付成功')
             return '支付成功'
         else:
+            print(str(result))
+            print('支付宝当面付｜用户支付失败')
             return '支付失败'
     except Exception as e:
         print(e)
-        print('支付宝当面付 | 请求失败')
+        print(str(result))
+        print('支付宝当面付｜请求失败')
         return 'API请求失败'
 
 

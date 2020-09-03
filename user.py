@@ -433,65 +433,73 @@ def timeout(update, context):
 
 
 def check_trade():
-    try:
-        while True:
-            print('---------------订单轮询开始---------------')
+    while True:
+        try:
+#             print('---------------订单轮询开始---------------')
             conn = sqlite3.connect('faka.sqlite3')
             cursor = conn.cursor()
             cursor.execute("select * from trade where status=?", ('unpaid',))
             unpaid_list = cursor.fetchall()
             conn.close()
-            for i in unpaid_list:
-                now_time = int(time.time())
-                trade_id, user_id, creat_time, goods_name, description, use_way, card_context, card_id, payment_method \
-                    = i[0], i[7], i[9], i[2], i[3], i[4], i[6], i[5], i[11]
-                sub_time = now_time - int(creat_time)
-                if sub_time >= PAY_TIMEOUT:
-                    payment_api = importlib.import_module("getways." + payment_method + "." + payment_method)
-                    payment_api.cancel(trade_id)
-                    conn = sqlite3.connect('faka.sqlite3')
-                    cursor = conn.cursor()
-                    cursor.execute("update trade set status=? where trade_id=?", ('locking', trade_id,))
-                    cursor.execute("update cards set status=? where id=?", ('active', card_id,))
-                    conn.commit()
-                    conn.close()
-                    bot.send_message(
-                        chat_id=user_id,
-                        text='很遗憾，订单已关闭\n'
-                             '订单号：`{}`\n'
-                             '原因：逾期未付\n'.format(trade_id),
-                        parse_mode='Markdown',
-                    )
-                else:
-                    try:
+            if len(unpaid_list) > 0:
+                for i in unpaid_list:
+                    now_time = int(time.time())
+                    trade_id, user_id, creat_time, goods_name, description, use_way, card_context, card_id, payment_method \
+                        = i[0], i[7], i[9], i[2], i[3], i[4], i[6], i[5], i[11]
+                    sub_time = now_time - int(creat_time)
+                    print(str(trade_id) + "｜" + str(payment_method) + "｜" + str(sub_time))
+                    if sub_time >= PAY_TIMEOUT:
                         payment_api = importlib.import_module("getways." + payment_method + "." + payment_method)
-                        rst = payment_api.query(trade_id)
-                        if rst == '支付成功':
-                            conn = sqlite3.connect('faka.sqlite3')
-                            cursor = conn.cursor()
-                            cursor.execute("update trade set status=? where trade_id=?", ('paid', trade_id,))
-                            cursor.execute("DELETE FROM cards WHERE id=?", (card_id,))
-                            conn.commit()
-                            conn.close()
+                        payment_api.cancel(trade_id)
+                        conn = sqlite3.connect('faka.sqlite3')
+                        cursor = conn.cursor()
+                        cursor.execute("update trade set status=? where trade_id=?", ('locking', trade_id,))
+                        cursor.execute("update cards set status=? where id=?", ('active', card_id,))
+                        conn.commit()
+                        conn.close()
+                        try:
                             bot.send_message(
                                 chat_id=user_id,
-                                text='恭喜！订单支付成功!\n'
-                                     '订单号：`{}`\n'
-                                     '商品：*{}*\n'
-                                     '描述：*{}*\n'
-                                     '卡密内容：`{}`\n'
-                                     '使用方法：*{}*\n'.format(trade_id, goods_name, description, card_context, use_way),
+                                text='很遗憾，订单已关闭，请勿支付原订单！\n'
+                                        '订单号：`{}`\n'
+                                        '原因：逾期未付\n'.format(trade_id),
                                 parse_mode='Markdown',
                             )
-                    except ModuleNotFoundError:
-                        print('支付方式不存在，请检查文件名与配置是否一致')
-                    except Exception as e:
-                        print(e)
-                time.sleep(3)
-            print('---------------订单轮询结束---------------')
+                        except Exception as e:
+                            print(e)
+                    else:
+                        try:
+                            payment_api = importlib.import_module("getways." + payment_method + "." + payment_method)
+                            rst = payment_api.query(trade_id)
+                            if rst == '支付成功':
+                                conn = sqlite3.connect('faka.sqlite3')
+                                cursor = conn.cursor()
+                                cursor.execute("update trade set status=? where trade_id=?", ('paid', trade_id,))
+                                cursor.execute("DELETE FROM cards WHERE id=?", (card_id,))
+                                conn.commit()
+                                conn.close()
+                                try:
+                                    bot.send_message(
+                                        chat_id=user_id,
+                                        text='恭喜！订单支付成功!\n'
+                                                '订单号：`{}`\n'
+                                                '商品：*{}*\n'
+                                                '描述：*{}*\n'
+                                                '卡密内容：`{}`\n'
+                                                '使用方法：*{}*\n'.format(trade_id, goods_name, description, card_context, use_way),
+                                        parse_mode='Markdown',
+                                    )
+                                except Exception as e:
+                                    print(e)
+                        except ModuleNotFoundError:
+                            print('支付方式不存在，请检查文件名与配置是否一致')
+                        except Exception as e:
+                            print(e)
+                    time.sleep(3)
+#             print('---------------订单轮询结束---------------')
             time.sleep(10)
-    except Exception as e:
-        print(e)
+        except Exception as e:
+            print(e)
 
 
 def payment_change_or_cancel(update, context):

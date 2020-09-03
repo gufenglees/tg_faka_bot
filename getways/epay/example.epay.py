@@ -63,9 +63,8 @@ def query(out_trade_no):
     try:
         req = requests.get(API + 'api.php?act=order&pid={}&key={}&out_trade_no={}'.format(ID, KEY, out_trade_no),
                            timeout=5)
-        print(req.text)
+#         print(req.text)
         rst = re.search(r"(\{.*?\})", req.text).group(1)
-        print(rst)
         rst_dict = json.loads(rst)
         print(rst_dict)
         code = str(rst_dict['code'])
